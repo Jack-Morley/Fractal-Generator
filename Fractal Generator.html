@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+
+    canvas {
+      display: block;
+      margin: 10px auto;
+      border: 3px solid;
+      border-color: darkgray;
+    }
+
+    #controls {
+      text-align: center;
+      margin: 10px;
+      
+    }
+
+    #fractalParams {
+      text-align: center;
+    }
+
+    button {
+      padding: 8px;
+      font-size: 16px;
+      margin: 0 5px;
+      background-color: #db0;
+    }
+
+    label {
+      display: block;
+      font-size: 16px;
+      margin-bottom: 5px;
+      margin: 0 5px;
+    }
+
+    input {
+      padding: 5px;
+      font-size: 16px;
+      margin: 0 5px;
+      background-color: #db0;
+    }
+
+    select {
+      padding: 5px;
+      font-size: 16px;
+      margin: 0 5px;
+      background-color: #db0;
+      border: 2px solid;
+    }
+
+    option {
+      padding: 5px;
+      font-size: 14px;
+      margin: 0 5px;
+      background-color: #db0;
+    }
+
+    p {
+      text-align: center;
+      font-size: 15px;
+      margin: 10px;
+    }
+  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fractal generator</title>
+</head>
+
+<body>
+  <canvas id="canvas" width="900" height="900"></canvas>
+
+  <div id="controls">
+    <!--fractal selection-->
+    <button onclick="generateFractal('mandelbrot')">Generate Mandelbrot</button>
+    <button onclick="generateFractal('julia')">Generate Julia</button>
+    <button onclick="generateFractal('burning_ship')">Generate Burning ship</button>
+    <button onclick="generateFractal('burning_julia')">Generate Burning julia</button>
+  </div>
+
+  <div id="fractalParams">
+    <!--adjustable fractal paramiters-->
+    <label for="maxiter">Max Iterations:</label>
+    <input type="number" id="maxiter" value="100" />
+    <br>
+    <label for="power">Power:</label>
+    <input type="number" id="power" step="1" value="2" />
+    <br>
+    <label for="real">Real Part:</label>
+    <input type="number" id="real" step="0.1" value="-1.2755681818181819" />
+    <br>
+    <label for="imag">Imaginary Part:</label>
+    <input type="number" id="imag" step="0.1" value="0.05113636363636358" />
+    <br>
+    <label for="cmap">Colour Map</label>
+    <!--colour map opptions-->
+    <select id="cmap">
+      <option value="gold">Gold</option>
+      <option value="red">Red</Red>
+      <option value="green">Green</option>
+      <option value="blue">Blue</option>
+      <option value="fracture">Fracture</option>
+      <option value="rainbow">Rainbow</option>
+    </select>
+  </div>
+
+  <p>
+    Fractals are shapes that have a finite / restricted area but also have an infinite perimeter. they often have a self
+    similar structure witch means that as you zoom into its border you will see the similar patterns to the original
+    zoomed out shape. This fractal generator focuses on fractals that are generated through an iterative process that
+    uses complex numbers to generate fractals. Press right control over any point on the canvas to automaticly get the Julia contant for that point.
+  </p>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/9.4.4/math.js"></script>
+  <script>
+    // This function generates a fractal based on the type provided as an argument.
+    function generateFractal(fractalType) {
+      // Clears the canvas before drawing a new fractal.
+      clearCanvas();
+
+      // Retrieves the parameters needed to generate the fractal.
+      const params = getFractalParameters(fractalType);
+
+      // Checks if the parameters are valid.
+      if (params) {
+        // Depending on the fractal type, it calls the appropriate function to draw the fractal.
+        if (fractalType === "mandelbrot") {
+          // Draws the Mandelbrot fractal.
+          drawMandelbrot(params, fractalType);
+        } else if (fractalType === "julia") {
+          // Draws the Julia fractal.
+          drawJulia(params, fractalType);
+        } else if (fractalType === "burning_ship") {
+          // Draws the Burning Ship fractal.
+          drawBurning_ship(params, fractalType);
+        } else if (fractalType === "burning_julia") {
+          // Draws the Burning Julia fractal.
+          drawBurning_julia(params, fractalType);
+        }
+      } else {
+        // If the parameters are invalid, it logs an error message to the console.
+        console.log("Invalid parameters.");
+      }
+    }
+
+    // This function clears the canvas for drawing.
+    function clearCanvas() {
+      // Get the canvas element by its ID.
+      const canvas = document.getElementById("canvas");
+      // Get the 2D rendering context for the canvas.
+      const ctx = canvas.getContext("2d");
+      // Clear the entire canvas.
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+
+
+    // This function retrieves the parameters needed to generate a fractal.
+    function getFractalParameters(fractalType, e) {
+      let maxiterInput, realInput, imagInput;
+      // Choose what parameters to use based on the fractal type.
+      if (fractalType === "mandelbrot") {
+        maxiterInput = document.getElementById("maxiter");
+      } else if (fractalType === "julia" || fractalType === "burning_julia") {
+        maxiterInput = document.getElementById("maxiter");
+        realInput = document.getElementById("real");
+        imagInput = document.getElementById("imag");
+      } else if (fractalType === "burning_ship") {
+        maxiterInput = document.getElementById("maxiter");
+      }
+      // Parse the maximum iteration value as an integer.
+      const maxiter = parseInt(maxiterInput.value);
+      // Parse the real and imaginary values as floats based on the fractal type.
+      if (fractalType === "julia" || fractalType === "burning_julia") {
+        var real = parseFloat(realInput.value);
+        var imag = parseFloat(imagInput.value);
+      } else {
+        var real = 0;
+        var imag = 0;
+      }
+      // Check if the parsed values are valid numbers.
+      if (isNaN(maxiter) || isNaN(real) || isNaN(imag)) {
+        // If not, alert the user and return null.
+        alert("Please enter valid numeric values.");
+        return null;
+      }
+      // Return an object containing the parameters.
+      return {
+        maxiter,
+        real,
+        imag,
+        // Parse the power value as a float.
+        power: parseFloat(document.getElementById("power").value)
+      }
+    }
+
+    // This function is used to draw the Mandelbrot set.
+    function drawMandelbrot(params, fractalType) {
+      // Logs a message to the console indicating the start of the fractal generation.
+      console.log(`Generating ${fractalType} fractal...`);
+
+      // Destructures the parameters object to get the maximum iterations and power.
+      const {maxiter, power} = params;
+
+      // Gets the canvas element from the DOM.
+      var canvas = document.getElementById("canvas");
+
+      // Gets the 2D rendering context from the canvas.
+      var ctx = canvas.getContext("2d");
+
+      // Sets the willReadFrequently property of the context to true for optimization.
+      ctx.willReadFrequently = true;
+
+      // Gets the width and height of the canvas.
+      var width = canvas.width;
+      var height = canvas.height;
+      if (power < 0) {
+        escape = 16
+      } else {
+        escape = 2
+      }
+      // Gets the value of the colour map from the DOM.
+      var cmap = document.getElementById("cmap").value;
+      // Iterates over each pixel in the canvas.
+      for (y = 0; y < height; y++) {
+        for (x = 0; x < width; x++) {
+          // Creates a complex number c based on the current pixel's position.
+          c = math.complex((x / width) * 4 - 2, (y / height) * 4 - 2);
+
+          // Initializes a complex number z and an iteration counter.
+          z=math.complex(0, 0);
+          iter = 0;
+
+          // Performs the Mandelbrot set calculation until the absolute value of z exceeds 2 or the maximum iterations is reached.
+          while (math.abs(z) <= escape && iter < maxiter) {
+            z = ((z).pow(power)).add(c);
+            iter++;
+          }
+          
+          // Colors the current pixel based on the iteration count and the selected colour map.
+          // Different colour maps are used to visualise the fractal in different ways.
+          // Each colour map has a different formula for calculating the RGB values of the pixel.
+          // If the maximum iteration is reached, the pixel is coloured black.
+          // Otherwise, the pixel is coloured based on the iteration count and the colour map.
+          if (cmap == "gold") {
+            if (iter == maxiter) {
+              ctx.fillStyle = `rgb(${0},${0},${0})`;
+            } else {
+              ctx.fillStyle = `rgb(${iter * 6},${iter * 3},${iter})`;
+            }
+          } else {
+            if (cmap == "red") {
+              if (iter == maxiter) {
+                ctx.fillStyle = `rgb(${0},${0},${0})`;
+              } else {
+                ctx.fillStyle = `rgb(${iter * 5},${iter},${iter})`;
+              }
+            } else {
+              if (cmap == "green") {
+                if (iter == maxiter) {
+                  ctx.fillStyle = `rgb(${0},${0},${0})`;
+                } else {
+                  ctx.fillStyle = `rgb(${iter},${iter * 4},${iter})`;
+                }
+              } else {
+                if (cmap == "blue") {
+                  if (iter == maxiter) {
+                    ctx.fillStyle = `rgb(${0},${0},${0})`;
+                  } else {
+                    ctx.fillStyle = `rgb(${3 + iter * 2},${3 + iter * 2},${35 + iter * 9})`;
+                  }
+                } else {
+                  if (cmap == "fracture") {
+                    if (iter == maxiter) {
+                      noise = math.floor(math.random() * 15 + 200)
+                      ctx.fillStyle = `rgb(${noise},${1.1 * noise},${noise})`;
+                    } else {
+                      ctx.fillStyle = `rgb(${40 + 4 * Math.tan(iter / 10)},${50 + 20 * Math.tan(iter / 10)},${40 + 4 * Math.tan(iter / 10)})`;
+                    }
+                  } else {
+                    if (cmap == "rainbow") {
+                      if (iter == maxiter) {
+                        ctx.fillStyle = `rgb(${0},${0},${0})`;
+                      } else {
+                        ctx.fillStyle = `rgb(${100 + Math.sin(iter / 8) * 110},${100 + Math.sin((iter / 8) + 30) * 110},${100 + Math.sin((iter / 8) + 60) * 110})`;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          // Fills the current pixel with the calculated colour.
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+
+      // Logs a message to the console indicating the end of the fractal generation.
+      console.log("Fractal generated.");
+    }
+
+
+    // This function is used to draw the Julia set.
+    function drawJulia(params, fractalType) {
+      console.log(`Generating ${fractalType} fractal...`);
+      const {maxiter, real, imag, power} = params;
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+      ctx.willReadFrequently = true;
+      const width = canvas.width;
+      const height = canvas.height;
+      if (power < 0) {
+        escape = 16
+      } else {
+        escape = 2
+      }
+      const cmap = document.getElementById("cmap").value;
+      for (x = 0; x < width; x++) {
+        for (y = 0; y < height; y++) {
+          z = math.complex(((x / width) * 4 - 2), ((y / height) * 4 - 2));
+          //formula of the julia set
+          c = math.complex(real, imag);
+          iter = 0;
+          while (math.abs(z) <= escape && iter < maxiter) {
+            z = (z.pow(power)).add(c);
+            iter++;
+          }
+
+          // Colors the current pixel based on the iteration count and the selected color map.
+          // Different color maps are used to visualize the fractal in different ways.
+          // Each color map has a different formula for calculating the RGB values of the pixel.
+          // If the maximum iterations is reached, the pixel is colored black.
+          // Otherwise, the pixel is colored based on the iteration count and the color map.
+          if (cmap == "gold") {
+            if (iter == maxiter) {
+              ctx.fillStyle = `rgb(${0},${0},${0})`;
+            } else {
+              ctx.fillStyle = `rgb(${iter * 6},${iter * 3},${iter})`;
+            }
+          } else {
+            if (cmap == "red") {
+              if (iter == maxiter) {
+                ctx.fillStyle = `rgb(${0},${0},${0})`;
+              } else {
+                ctx.fillStyle = `rgb(${iter * 5},${iter},${iter})`;
+              }
+            } else {
+              if (cmap == "green") {
+                if (iter == maxiter) {
+                  ctx.fillStyle = `rgb(${0},${0},${0})`;
+                } else {
+                  ctx.fillStyle = `rgb(${iter},${iter * 4},${iter})`;
+                }
+              } else {
+                if (cmap == "blue") {
+                  if (iter == maxiter) {
+                    ctx.fillStyle = `rgb(${0},${0},${0})`;
+                  } else {
+                    ctx.fillStyle = `rgb(${3 + iter * 2},${3 + iter * 2},${35 + iter * 9})`;
+                  }
+                } else {
+                  if (cmap == "fracture") {
+                    if (iter == maxiter) {
+                      noise = math.floor(math.random() * 15 + 200)
+                      ctx.fillStyle = `rgb(${noise},${1.1 * noise},${noise})`;
+                    } else {
+                      ctx.fillStyle = `rgb(${40 + 4 * Math.tan(iter / 10)},${50 + 20 * Math.tan(iter / 10)},${40 + 4 * Math.tan(iter / 10)})`;
+                    }
+                  } else {
+                    if (cmap == "rainbow") {
+                      if (iter == maxiter) {
+                        ctx.fillStyle = `rgb(${0},${0},${0})`;
+                      } else {
+                        ctx.fillStyle = `rgb(${100 + Math.sin(iter / 8) * 110},${100 + Math.sin((iter / 8) + 30) * 110},${100 + Math.sin((iter / 8) + 60) * 110})`;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+      console.log("Fractal generated.");
+    }
+
+    // This function is used to draw the Burining Ship fractal.
+    function drawBurning_ship(params, fractalType) {
+      console.log(`Generating ${fractalType} fractal...`);
+      const {maxiter} = params;
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+      ctx.willReadFrequently = true;
+      const width = canvas.width;
+      const height = canvas.height;
+      const cmap = document.getElementById("cmap").value;
+      for (let x = 0; x < width; x++) {
+        for (let y = 0; y < height; y++) {
+          let zx = ((x) / width) * 4 - 2;
+          let zy = ((y) / height) * 4 - 2;
+          let cx = zx;
+          let cy = zy;
+          //formula of the burning ship set
+          let iter = 0;
+          while (iter < maxiter) {
+            let xtemp = (zx ** 2 - zy ** 2) + cx;
+            zy = 2 * Math.abs(zx) * Math.abs(zy) + cy;
+            zx = xtemp;
+            if (zy ** 2 + zx ** 2 > 4) {
+              break;
+            }
+            iter++;
+          }
+          //colouring the burning ship
+          if (cmap == "gold") {
+            if (iter == maxiter) {
+              ctx.fillStyle = `rgb(${0},${0},${0})`;
+            } else {
+              ctx.fillStyle = `rgb(${iter * 6},${iter * 3},${iter})`;
+            }
+          } else {
+            if (cmap == "red") {
+              if (iter == maxiter) {
+                ctx.fillStyle = `rgb(${0},${0},${0})`;
+              } else {
+                ctx.fillStyle = `rgb(${iter * 5},${iter},${iter})`;
+              }
+            } else {
+              if (cmap == "green") {
+                if (iter == maxiter) {
+                  ctx.fillStyle = `rgb(${0},${0},${0})`;
+                } else {
+                  ctx.fillStyle = `rgb(${iter},${iter * 4},${iter})`;
+                }
+              } else {
+                if (cmap == "blue") {
+                  if (iter == maxiter) {
+                    ctx.fillStyle = `rgb(${0},${0},${0})`;
+                  } else {
+                    ctx.fillStyle = `rgb(${3 + iter * 2},${3 + iter * 2},${35 + iter * 9})`;
+                  }
+                } else {
+                  if (cmap == "fracture") {
+                    if (iter == maxiter) {
+                      noise = math.floor(math.random() * 15 + 200)
+                      ctx.fillStyle = `rgb(${noise},${1.1 * noise},${noise})`;
+                    } else {
+                      ctx.fillStyle = `rgb(${40 + 4 * Math.tan(iter / 10)},${50 + 20 * Math.tan(iter / 10)},${40 + 4 * Math.tan(iter / 10)})`;
+                    }
+                  } else {
+                    if (cmap == "rainbow") {
+                      if (iter == maxiter) {
+                        ctx.fillStyle = `rgb(${0},${0},${0})`;
+                      } else {
+                        ctx.fillStyle = `rgb(${100 + Math.sin(iter / 8) * 110},${100 + Math.sin((iter / 8) + 30) * 110},${100 + Math.sin((iter / 8) + 60) * 110})`;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+      console.log("Fractal generated.");
+    }
+
+    //Draw the Burning julia set
+    function drawBurning_julia(params, fractalType) {
+      console.log(`Generating ${fractalType} fractal...`);
+      const {maxiter, real, imag} = params;
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+      ctx.willReadFrequently = true;
+      const width = canvas.width;
+      const height = canvas.height;
+      const cmap = document.getElementById("cmap").value;
+      for (let x = 0; x < width; x++) {
+        for (let y = 0; y < height; y++) {
+          let zx = (x / width) * 4 - 2;
+          let zy = (y / height) * 4 - 2;
+          let cx = real;
+          let cy = imag;
+          //formula of the burning julia set
+          let iter = 0;
+          while (iter < maxiter) {
+            let xtemp = zx ** 2 - zy ** 2 + real;
+            zy = 2 * math.abs(zx) * math.abs(zy) + imag;
+            zx = xtemp;
+            if (zy ** 2 + zx ** 2 > 4) {
+              break;
+            }
+            iter++;
+          }
+          //colouring the burning julia set
+          if (cmap == "gold") {
+            if (iter == maxiter) {
+              ctx.fillStyle = `rgb(${0},${0},${0})`;
+            } else {
+              ctx.fillStyle = `rgb(${iter * 6},${iter * 3},${iter})`;
+            }
+          } else {
+            if (cmap == "red") {
+              if (iter == maxiter) {
+                ctx.fillStyle = `rgb(${0},${0},${0})`;
+              } else {
+                ctx.fillStyle = `rgb(${iter * 5},${iter},${iter})`;
+              }
+            } else {
+              if (cmap == "green") {
+                if (iter == maxiter) {
+                  ctx.fillStyle = `rgb(${0},${0},${0})`;
+                } else {
+                  ctx.fillStyle = `rgb(${iter},${iter * 4},${iter})`;
+                }
+              } else {
+                if (cmap == "blue") {
+                  if (iter == maxiter) {
+                    ctx.fillStyle = `rgb(${0},${0},${0})`;
+                  } else {
+                    ctx.fillStyle = `rgb(${3 + iter * 2},${3 + iter * 2},${35 + iter * 9})`;
+                  }
+                } else {
+                  if (cmap == "fracture") {
+                    if (iter == maxiter) {
+                      noise = math.floor(math.random() * 15 + 200)
+                      ctx.fillStyle = `rgb(${noise},${1.1 * noise},${noise})`;
+                    } else {
+                      ctx.fillStyle = `rgb(${40 + 4 * Math.tan(iter / 10)},${50 + 20 * Math.tan(iter / 10)},${40 + 4 * Math.tan(iter / 10)})`;
+                    }
+                  } else {
+                    if (cmap == "rainbow") {
+                      if (iter == maxiter) {
+                        ctx.fillStyle = `rgb(${0},${0},${0})`;
+                      } else {
+                        ctx.fillStyle = `rgb(${100 + Math.sin(iter / 8) * 110},${100 + Math.sin((iter / 8) + 30) * 110},${100 + Math.sin((iter / 8) + 60) * 110})`;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+      console.log("Fractal generated.");
+    }
+
+    //Set the Julia constant to the mouse position after pressing control
+    //find the mouse position
+    onmousemove = function (e) {xpos = e.clientX, ypos = e.clientY}
+    document.addEventListener('keydown', logKey);
+    function logKey(e) {
+      //detect when right control is pressed
+      if (`${e.code}` == "ControlRight") {
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        //calculate the scale factor
+        var rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        //check mouse position and set Julia constants
+        real = (((xpos - rect.left) * scaleX - (canvas.width / 2)) / canvas.width * 4);
+        imag = ((ypos - rect.top) * scaleY - (canvas.height / 2)) / canvas.height * 4;
+        document.getElementById("real").value = real;
+        document.getElementById("imag").value = imag;
+      }
+    }
+  </script>
+</body>
+
+</html>
